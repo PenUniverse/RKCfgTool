@@ -1,0 +1,11 @@
+tests
+
+# VSCode
+.vscode
+
+# XMake
+.xmake
+build
+
+# ClangD
+.cache
