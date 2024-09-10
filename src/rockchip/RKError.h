@@ -69,7 +69,13 @@ inline std::error_code make_rkcfg_save_error(RKCfgSaveErrorCode ec) {
 
 // ConvertParamError
 
-enum class RKConvertParamErrorCode { SUCCESS = 0, FileNotExists, UnableToOpenFile };
+enum class RKConvertParamErrorCode {
+    SUCCESS = 0,
+    FileNotExists,
+    UnableToOpenFile,
+    MtdPartsNotFound,
+    IllegalMtdPartFormat
+};
 
 class RKConvertParamErrorCategory : public std::error_category {
 public:

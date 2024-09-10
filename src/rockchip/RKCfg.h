@@ -38,9 +38,14 @@ public:
     // TODO: Replace with: std::expected
     static std::optional<RKCfgFile> fromParameter(const std::string& path, std::error_code& ec);
 
+    // TODO: Replace with: std::expected
+    static std::optional<RKCfgFile> fromJson(const std::string& path, std::error_code& ec);
+
 private:
     RKCfgHeader        mHeader{};
     RKCfgItemContainer mItems;
 
     void _cleanUp();
+
+    static RKCfgHeader _makeHeader();
 };

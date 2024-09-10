@@ -3,8 +3,6 @@
 
 #include "rockchip/RKCfg.h"
 
-#include "util/String.h"
-
 int main(int argc, char** argv) {
 
     // ---  Logger  ---
