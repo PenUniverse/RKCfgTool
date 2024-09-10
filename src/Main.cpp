@@ -1,6 +1,8 @@
 #include <argparse/argparse.hpp>
 #include <spdlog/spdlog.h>
 
+#include <fstream>
+
 #include "rockchip/RKCfg.h"
 
 int main(int argc, char** argv) {
@@ -26,15 +28,19 @@ int main(int argc, char** argv) {
         .help("Set the output file path (if any).");
     
     program.add_argument("--show")
+        .default_value(false)
         .help("Print the partition table information contained in the cfg file.");
     
     program.add_argument("--json")
+        .default_value(false)
         .help("Convert cfg file to json file.");
     
     program.add_argument("--cfg")
+        .default_value(false)
         .help("Convert json or parameter.txt to cfg file.");
 
     program.add_argument("--auto-scan")
+        .default_value(false)
         .help("When converting json or parameter.txt to cfg file, the image file in the current directory will be automatically scanned and written.");
 
     program.parse_args(argc, argv);
@@ -66,11 +72,37 @@ int main(int argc, char** argv) {
             file.printDebugString();
         }
         if (Task_ShouldConvertToJson) {
-            file.toJson();
+            auto json = file.toJson();
+            if (!program.is_used("--output")) {
+                spdlog::error("An output path must be specified.");
+                return -1;
+            }
+            auto          outputFilePath = program.get<std::string>("--output");
+            std::ofstream ofs(outputFilePath, std::ios::trunc);
+            ofs << json.dump(4);
+            ofs.close();
         }
     }
 
-    if (Task_ShouldConvertToCfg) {}
+    if (Task_ShouldConvertToCfg) {
+        std::error_code ec;
+
+        auto file = RKCfgFile::fromParameter(inputFileName, ec);
+        if (!program.is_used("--output")) {
+            spdlog::error("An output path must be specified.");
+            return -1;
+        }
+        if (ec) {
+            spdlog::error(ec.message());
+            return -1;
+        }
+        auto outputFilePath = program.get<std::string>("--output");
+        file->save(outputFilePath, ec);
+        if (ec) {
+            spdlog::error(ec.message());
+            return -1;
+        }
+    }
 
     return 0;
 }

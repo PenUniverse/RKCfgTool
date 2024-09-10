@@ -88,6 +88,10 @@ public:
             return "The file does not exist.";
         case RKConvertParamErrorCode::UnableToOpenFile:
             return "Unable to open file.";
+        case RKConvertParamErrorCode::MtdPartsNotFound:
+            return "Unable to find mtdparts in parameter.";
+        case RKConvertParamErrorCode::IllegalMtdPartFormat:
+            return "Illegal mtdparts format.";
         default:
             return {};
         }
