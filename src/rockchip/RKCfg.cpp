@@ -210,7 +210,10 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
     return result;
 }
 
-std::optional<RKCfgFile> RKCfgFile::fromJson(const std::string& path, std::error_code& ec) {}
+std::optional<RKCfgFile> RKCfgFile::fromJson(const std::string& path, std::error_code& ec) {
+    // TODO
+    return {};
+}
 
 void RKCfgFile::_cleanUp() {
     mHeader = {};
