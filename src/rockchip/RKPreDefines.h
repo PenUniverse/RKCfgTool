@@ -18,6 +18,8 @@ struct RKCfgHeader {
     // external
     static const size_t RK_V286_HEADER_SIZE;
     static const size_t RK_V286_ITEM_SIZE;
+    // auto zero-initializer
+    RKCfgHeader() : gap_0{}, length{} {}
 };
 
 static_assert(sizeof(RKCfgHeader) == 29);
@@ -33,6 +35,11 @@ struct RKCfgItem {
     uint32_t address;
     uint8_t  is_selected;
     char     gap_1[3];
+    // external
+    static const size_t RK_V286_MAX_NAME_SIZE;
+    static const size_t RK_V286_MAX_PATH_SIZE;
+    // auto zero-initializer
+    RKCfgItem() : gap_0{}, name{}, image_path{}, address{}, is_selected{}, gap_1{} {}
 };
 
 static_assert(sizeof(RKCfgItem) == 610);
@@ -44,5 +51,9 @@ static_assert(offsetof(RKCfgItem, is_selected) == 606);
 
 inline const size_t RKCfgHeader::RK_V286_HEADER_SIZE = sizeof(RKCfgHeader);
 inline const size_t RKCfgHeader::RK_V286_ITEM_SIZE   = sizeof(RKCfgItem);
+
+inline const size_t RKCfgItem::RK_V286_MAX_NAME_SIZE = sizeof(RKCfgItem::name) / sizeof(decltype(RKCfgItem::name[0]));
+inline const size_t RKCfgItem::RK_V286_MAX_PATH_SIZE =
+    sizeof(RKCfgItem::image_path) / sizeof(decltype(RKCfgItem::image_path[0]));
 
 #pragma pack(pop)

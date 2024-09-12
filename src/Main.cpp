@@ -46,8 +46,7 @@ int main(int argc, char** argv) {
 
     auto input_file_path = program.get<std::string>("--input");
 
-    spdlog::info("{:<12} {}", "Input file:", input_file_path);
-    spdlog::info("Parsing...");
+    spdlog::info("Loading... {}", input_file_path);
 
     if (program["--show"] == true) {
         if (input_file_path.ends_with(".json")) {
@@ -90,6 +89,7 @@ int main(int argc, char** argv) {
             spdlog::error(ec.message());
             return -1;
         }
+        spdlog::info("Results have been saved to {}", output_file_path);
     }
 
     return 0;

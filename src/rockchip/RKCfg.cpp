@@ -39,7 +39,7 @@ std::optional<RKCfgFile> RKCfgFile::fromFile(const std::string& path, std::error
     result.m_items.reserve(result.m_header.length + 1);
     for (size_t idx = 0; idx < result.m_header.length; idx++) {
         file.seekg(result.m_header.begin + idx * result.m_header.item_size, std::ios::beg);
-        RKCfgItem item{};
+        RKCfgItem item;
         file.read(reinterpret_cast<char*>(&item), sizeof(item));
         result.m_items.emplace_back(std::move(item));
     }
@@ -119,10 +119,8 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
     }
     RKCfgFile result;
     for (auto& part : parts) {
-        constexpr size_t MAX_PATH_SIZE = sizeof(RKCfgItem::name) / sizeof(decltype(RKCfgItem::name[0]));
-
         RKCfgItem item;
-        if (!StringToChar16(part.name, item.name, MAX_PATH_SIZE)) {
+        if (!StringToChar16(part.name, item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE)) {
             ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
             return {};
         }
@@ -148,7 +146,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         }
         if (!potential_image_path.empty()) {
             spdlog::info("Selected {} as the image file of {}.", potential_image_path, Char16ToString(item.name));
-            StringToChar16(potential_image_path, item.image_path, MAX_PATH_SIZE);
+            StringToChar16(potential_image_path, item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
         }
         item.address     = part.address;
         item.is_selected = true;
@@ -158,13 +156,47 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
 }
 
 std::optional<RKCfgFile> RKCfgFile::fromJson(const std::string& path, std::error_code& ec) {
-    // TODO
-    return {};
+    using json = nlohmann::json;
+
+    if (!std::filesystem::exists(path)) {
+        ec = make_rkcfg_load_error(RKCfgLoadErrorCode::FileNotExists);
+        return {};
+    }
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        ec = make_rkcfg_load_error(RKCfgLoadErrorCode::UnableToOpenFile);
+        return {};
+    }
+    try {
+        const auto data = json::parse(file);
+        RKCfgFile  file;
+        if (file.m_header.begin != data["header"]["size"]) {
+            ec = make_rkcfg_load_error(RKCfgLoadErrorCode::UnsupportedHeaderSize);
+            return {};
+        }
+        if (file.m_header.item_size != data["header"]["item_size"]) {
+            ec = make_rkcfg_load_error(RKCfgLoadErrorCode::UnsupportedItemSize);
+            return {};
+        }
+        file.m_header.length = data["items"].size();
+        for (auto& item_data : data["items"]) {
+            RKCfgItem item;
+            StringToChar16(item_data["name"], item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
+            StringToChar16(item_data["image_path"], item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+            item.address     = item_data["address"];
+            item.is_selected = item_data["is_selected"];
+            file.m_items.emplace_back(item);
+        }
+        return file;
+    } catch (const json::exception& e) {
+        ec = make_rkcfg_load_error(RKCfgLoadErrorCode::JsonParseError);
+        return {};
+    }
 }
 
 void RKCfgFile::save(const std::string& path, SaveMode mode, std::error_code& ec) const {
     if (mode == JsonMode) {
-        std::ofstream file(path, std::ios::trunc);
+        std::ofstream file(path);
         if (!file.is_open()) {
             ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
             return;
@@ -173,7 +205,7 @@ void RKCfgFile::save(const std::string& path, SaveMode mode, std::error_code& ec
         file.close();
         return;
     }
-    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    std::ofstream file(path, std::ios::binary);
     if (!file.is_open()) {
         ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
         return;
@@ -190,10 +222,10 @@ nlohmann::json RKCfgFile::toJson() const {
     result["header"]["item_size"] = m_header.item_size;
     for (auto& item : m_items) {
         result["items"].emplace_back(nlohmann::json{
-            {"selected",   item.is_selected               },
-            {"address",    item.address                   },
-            {"name",       Char16ToString(item.name)      },
-            {"image_path", Char16ToString(item.image_path)}
+            {"is_selected", (bool)item.is_selected         },
+            {"address",     item.address                   },
+            {"name",        Char16ToString(item.name)      },
+            {"image_path",  Char16ToString(item.image_path)}
         });
     }
     return result;

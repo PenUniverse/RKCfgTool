@@ -8,9 +8,13 @@ enum class RKCfgLoadErrorCode {
     SUCCESS = 0,
     FileNotExists,
     UnableToOpenFile,
+    UnsupportedItemSize,
+    // Binary (Default)
     AbnormalFileSize,
     IsNotRKCfgFile,
-    UnsupportedItemSize
+    // Json
+    JsonParseError,
+    UnsupportedHeaderSize
 };
 
 class RKCfgLoadErrorCategory : public std::error_category {
@@ -24,12 +28,18 @@ public:
             return "The file does not exist.";
         case RKCfgLoadErrorCode::UnableToOpenFile:
             return "Unable to open file.";
+        case RKCfgLoadErrorCode::UnsupportedItemSize:
+            return "The file has an unsupported ItemSize. Please file an Issue on GitHub.";
+        // Binary (Default)
         case RKCfgLoadErrorCode::AbnormalFileSize:
             return "The file size is abnormal, maybe it is corrupted?";
         case RKCfgLoadErrorCode::IsNotRKCfgFile:
             return "The target file is not an RKDevTool Config file.";
-        case RKCfgLoadErrorCode::UnsupportedItemSize:
-            return "The file has an unsupported ItemSize. Please file an Issue on GitHub.";
+            // Json
+        case RKCfgLoadErrorCode::JsonParseError:
+            return "Json parsing failed, the format is incorrect!";
+        case RKCfgLoadErrorCode::UnsupportedHeaderSize:
+            return "The file has an unsupported HeaderSize, have you updated to the latest? ";
         default:
             return {};
         }
