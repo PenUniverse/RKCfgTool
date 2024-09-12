@@ -32,7 +32,9 @@ std::optional<RKCfgFile> RKCfgFile::fromFile(const std::string& path, std::error
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::UnsupportedItemSize);
         return {};
     }
-    if (file_size != sizeof(m_header) + result.m_header.item_size * result.m_header.length) {
+    auto legal_size = sizeof(m_header) + result.m_header.item_size * result.m_header.length;
+    if (file_size != legal_size) {
+        spdlog::debug("file_size = {:#x} (legal size = {:#x})", file_size, legal_size);
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::AbnormalFileSize);
         return {};
     }
@@ -61,35 +63,41 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
     while (std::getline(file, mtdparts)) {
         if (mtdparts.starts_with("mtdparts=")) break;
     }
+    spdlog::debug("mtdparts: {}", mtdparts);
     if (mtdparts.empty()) {
         ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::MtdPartsNotFound);
         return {};
     }
     auto first_quotation_mark_pos = mtdparts.find(':');
     if (first_quotation_mark_pos == std::string::npos) {
+        spdlog::debug("Illegal mark position. (0)");
         ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
         return {};
     }
-    auto mtdparts_stream = std::stringstream(mtdparts.substr(first_quotation_mark_pos));
+    auto mtdparts_stream = std::stringstream(mtdparts.substr(first_quotation_mark_pos + 1));
     // "0x00002000@0x00004000(uboot)"
     // "-@0x0123a000(userdisk:grow)"
     std::string mtdpart;
     struct Partition {
-        std::string             name;
-        uint32_t                address;
-        std::optional<uint32_t> size;
+        std::string name;
+        uint32_t    address;
+        // size is unused in rkcfg format.
+        [[maybe_unused]] std::optional<uint32_t> size;
     };
     std::vector<Partition> parts;
     while (std::getline(mtdparts_stream, mtdpart, ',')) {
+        spdlog::debug("mtdpart: {}", mtdpart);
         auto at_mark_pos             = mtdpart.find('@');
         auto left_quotation_mark_pos = mtdpart.find('(');
         if (at_mark_pos == std::string::npos || left_quotation_mark_pos == std::string::npos
             || at_mark_pos > left_quotation_mark_pos) {
+            spdlog::debug("Illegal mark position. (1)");
             ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
             return {};
         }
         auto right_quotation_mark_pos = mtdpart.find(')', left_quotation_mark_pos);
         if (right_quotation_mark_pos == std::string::npos) {
+            spdlog::debug("Illegal mark position. (2)");
             ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
             return {};
         }
@@ -103,13 +111,16 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         std::optional<uint32_t> address = StringToUInt32(address_str);
 
         if (!address) {
+            spdlog::debug("Invalid address. (3)");
             ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
             return {};
         }
 
-        if (size_str == "-") { // grow
+        if (size_str != "-") { // grow
             size = StringToUInt32(size_str);
             if (!size) {
+                StringRemoveSuffix(name, ":grow"); // extend to maximum position.
+                spdlog::debug("Invalid size. (4)");
                 ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
                 return {};
             }
@@ -118,6 +129,19 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         parts.emplace_back(name, *address, size);
     }
     RKCfgFile result;
+    // add rkcfg default parts
+    RKCfgItem loader;
+    StringToChar16("Loader", loader.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
+    StringToChar16("MiniLoaderAll.bin", loader.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+    loader.address     = 0x00000000;
+    loader.is_selected = true;
+    result.m_items.emplace_back(loader);
+    RKCfgItem parameter;
+    StringToChar16("parameter", parameter.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
+    StringToChar16(path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+    parameter.address     = 0x00000000;
+    parameter.is_selected = true;
+    result.m_items.emplace_back(parameter);
     for (auto& part : parts) {
         RKCfgItem item;
         if (!StringToChar16(part.name, item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE)) {
@@ -151,6 +175,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         item.address     = part.address;
         item.is_selected = true;
         result.m_items.emplace_back(std::move(item));
+        result.m_header.length++;
     }
     return result;
 }

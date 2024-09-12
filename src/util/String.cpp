@@ -9,6 +9,8 @@ std::string Char16ToString(const char16_t* str) {
 }
 
 bool StringToChar16(const std::string& str, char16_t* des, size_t len) {
+    // icu::UnicodeString uses UTF-16 to store strings by default.
+
     auto unicode = icu::UnicodeString::fromUTF8(str);
     auto length  = unicode.length();
     if ((size_t)length > len - 1) return false;
