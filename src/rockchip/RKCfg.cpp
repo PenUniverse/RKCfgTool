@@ -90,12 +90,13 @@ RKCfgHeader const& RKCfgFile::getHeader() const { return mHeader; }
 RKCfgItemContainer const& RKCfgFile::getItems() const { return mItems; }
 
 void RKCfgFile::printDebugString() const {
-    spdlog::info("Starting item address: {:#x}", mHeader.begin);
-    spdlog::info("Item size:             {:#x}", mHeader.item_size);
+    spdlog::info("{:<12} {:#x}", "Header size:", mHeader.begin);
+    spdlog::info("{:<12} {:#x}", "Item size:", mHeader.item_size);
     spdlog::info("Partitions({}): ", mHeader.length);
+    spdlog::info("    {:<10} {:10} {}", "Address", "Name", "Path");
     for (auto& item : mItems) {
         spdlog::info(
-            "\t[{}] {:#x} {} {}",
+            "[{}] {:#010x} {:<10} {}",
             item.is_selected ? "x" : " ",
             item.address,
             Char16ToString(item.name),
