@@ -44,14 +44,14 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    auto input_file_name = program.get<std::string>("--input");
+    auto input_file_path = program.get<std::string>("--input");
 
-    spdlog::info("{:<12} {}", "Input file:", input_file_name);
+    spdlog::info("{:<12} {}", "Input file:", input_file_path);
     spdlog::info("Parsing...");
 
     if (program["--show"] == true) {
-        if (input_file_name.ends_with(".json")) {
-            auto file = RKCfgFile::fromJson(input_file_name, ec);
+        if (input_file_path.ends_with(".json")) {
+            auto file = RKCfgFile::fromJson(input_file_path, ec);
             if (ec) {
                 spdlog::error(ec.message());
                 return -1;
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
             file->printDebugString();
         } else {
             RKCfgFile file;
-            file.load(input_file_name, ec);
+            file.load(input_file_path, ec);
             if (ec) {
                 spdlog::error(ec.message());
                 return -1;
@@ -71,19 +71,23 @@ int main(int argc, char** argv) {
     if (program.is_used("--output")) {
         auto                     output_file_path = program.get<std::string>("--output");
         std::optional<RKCfgFile> file;
-        if (input_file_name.ends_with(".json")) {
-            file = RKCfgFile::fromJson(input_file_name, ec);
-        } else if (input_file_name.ends_with(".txt")) {
-            file = RKCfgFile::fromParameter(input_file_name, ec);
+        if (input_file_path.ends_with(".json")) {
+            file = RKCfgFile::fromJson(input_file_path, ec);
+        } else if (input_file_path.ends_with(".txt")) {
+            file = RKCfgFile::fromParameter(input_file_path, ec);
         } else {
-            spdlog::error("Unsupported file format!");
-            return -1;
+            file = std::make_optional<RKCfgFile>();
+            file->load(input_file_path, ec);
         }
         if (ec) {
             spdlog::error(ec.message());
             return -1;
         }
-        file->save(output_file_path, ec);
+        if (output_file_path.ends_with(".json")) {
+            file->save_to_json(output_file_path, ec);
+        } else {
+            file->save(output_file_path, ec);
+        }
         if (ec) {
             spdlog::error(ec.message());
             return -1;

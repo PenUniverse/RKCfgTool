@@ -59,8 +59,11 @@ void RKCfgFile::save(const std::string& path, std::error_code& ec) const {
 
 void RKCfgFile::save_to_json(const std::string& path, std::error_code& ec) const {
     nlohmann::json result;
+    result["header"]["size"]      = mHeader.begin;
+    result["header"]["item_size"] = mHeader.item_size;
     for (auto& item : mItems) {
-        result["partitions"].emplace_back(nlohmann::json{
+        result["items"].emplace_back(nlohmann::json{
+            {"selected",   item.is_selected               },
             {"address",    item.address                   },
             {"name",       Char16ToString(item.name)      },
             {"image_path", Char16ToString(item.image_path)}
