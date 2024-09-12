@@ -57,6 +57,24 @@ void RKCfgFile::save(const std::string& path, std::error_code& ec) const {
     }
 }
 
+void RKCfgFile::save_to_json(const std::string& path, std::error_code& ec) const {
+    nlohmann::json result;
+    for (auto& item : mItems) {
+        result["partitions"].emplace_back(nlohmann::json{
+            {"address",    item.address                   },
+            {"name",       Char16ToString(item.name)      },
+            {"image_path", Char16ToString(item.image_path)}
+        });
+    }
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    if (!file.is_open()) {
+        ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
+        return;
+    }
+    file << result.dump(4);
+    file.close();
+}
+
 uint8_t RKCfgFile::getTableLength() const { return mHeader.length; }
 
 void RKCfgFile::addItem(const RKCfgItem& item) { mItems.emplace_back(item); }
@@ -84,18 +102,6 @@ void RKCfgFile::printDebugString() const {
             Char16ToString(item.image_path)
         );
     }
-}
-
-nlohmann::json RKCfgFile::toJson() const {
-    nlohmann::json result;
-    for (auto& item : mItems) {
-        result["partitions"].emplace_back(nlohmann::json{
-            {"address",    item.address                   },
-            {"name",       Char16ToString(item.name)      },
-            {"image_path", Char16ToString(item.image_path)}
-        });
-    }
-    return result;
 }
 
 std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::error_code& ec) {

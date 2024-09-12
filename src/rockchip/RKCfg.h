@@ -15,7 +15,9 @@ public:
     RKCfgFile() = default;
 
     void load(const std::string& path, std::error_code& ec);
+
     void save(const std::string& path, std::error_code& ec) const;
+    void save_to_json(const std::string& path, std::error_code& ec) const;
 
     uint8_t getTableLength() const;
 
@@ -32,8 +34,6 @@ public:
     RKCfgItemContainer const& getItems() const;
 
     void printDebugString() const;
-
-    nlohmann::json toJson() const;
 
     // TODO: Replace with: std::expected
     static std::optional<RKCfgFile> fromParameter(const std::string& path, std::error_code& ec);
