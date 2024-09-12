@@ -81,11 +81,11 @@ int main(int argc, char** argv) {
             spdlog::error(ec.message());
             return -1;
         }
-        if (output_file_path.ends_with(".json")) {
-            file->save_to_json(output_file_path, ec);
-        } else {
-            file->save(output_file_path, ec);
-        }
+        file->save(
+            output_file_path,
+            output_file_path.ends_with(".json") ? RKCfgFile::JsonMode : RKCfgFile::DefaultMode,
+            ec
+        );
         if (ec) {
             spdlog::error(ec.message());
             return -1;

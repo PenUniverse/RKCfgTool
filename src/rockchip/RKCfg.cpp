@@ -118,7 +118,6 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         parts.emplace_back(name, *address, size);
     }
     RKCfgFile result;
-    result.m_header = _makeHeader();
     for (auto& part : parts) {
         constexpr size_t MAX_PATH_SIZE = sizeof(RKCfgItem::name) / sizeof(decltype(RKCfgItem::name[0]));
 
@@ -163,7 +162,17 @@ std::optional<RKCfgFile> RKCfgFile::fromJson(const std::string& path, std::error
     return {};
 }
 
-void RKCfgFile::save(const std::string& path, std::error_code& ec) const {
+void RKCfgFile::save(const std::string& path, SaveMode mode, std::error_code& ec) const {
+    if (mode == JsonMode) {
+        std::ofstream file(path, std::ios::trunc);
+        if (!file.is_open()) {
+            ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
+            return;
+        }
+        file << toJson().dump(4);
+        file.close();
+        return;
+    }
     std::ofstream file(path, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
         ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
@@ -175,7 +184,7 @@ void RKCfgFile::save(const std::string& path, std::error_code& ec) const {
     }
 }
 
-void RKCfgFile::save_to_json(const std::string& path, std::error_code& ec) const {
+nlohmann::json RKCfgFile::toJson() const {
     nlohmann::json result;
     result["header"]["size"]      = m_header.begin;
     result["header"]["item_size"] = m_header.item_size;
@@ -187,13 +196,7 @@ void RKCfgFile::save_to_json(const std::string& path, std::error_code& ec) const
             {"image_path", Char16ToString(item.image_path)}
         });
     }
-    std::ofstream file(path, std::ios::binary | std::ios::trunc);
-    if (!file.is_open()) {
-        ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
-        return;
-    }
-    file << result.dump(4);
-    file.close();
+    return result;
 }
 
 uint8_t RKCfgFile::getTableLength() const { return m_header.length; }
@@ -224,12 +227,4 @@ void RKCfgFile::printDebugString() const {
             Char16ToString(item.image_path)
         );
     }
-}
-
-RKCfgHeader RKCfgFile::_makeHeader() {
-    RKCfgHeader result;
-    result.length    = 0;
-    result.begin     = sizeof(RKCfgHeader);
-    result.item_size = sizeof(RKCfgItem);
-    return result;
 }

@@ -12,6 +12,8 @@ using RKParameter        = std::unordered_map<std::string, std::string>;
 
 class RKCfgFile {
 public:
+    enum SaveMode { DefaultMode, JsonMode };
+
     // TODO: Replace with: std::expected
     static std::optional<RKCfgFile> fromFile(const std::string& path, std::error_code& ec);
 
@@ -21,8 +23,9 @@ public:
     // TODO: Replace with: std::expected
     static std::optional<RKCfgFile> fromJson(const std::string& path, std::error_code& ec);
 
-    void save(const std::string& path, std::error_code& ec) const;
-    void save_to_json(const std::string& path, std::error_code& ec) const;
+    void save(const std::string& path, SaveMode mode, std::error_code& ec) const;
+
+    nlohmann::json toJson() const;
 
     uint8_t getTableLength() const;
 
@@ -42,8 +45,6 @@ public:
 
 private:
     RKCfgFile() = default;
-
-    static RKCfgHeader _makeHeader();
 
     RKCfgHeader        m_header{};
     RKCfgItemContainer m_items;

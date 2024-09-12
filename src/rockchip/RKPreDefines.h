@@ -13,8 +13,11 @@ struct RKCfgHeader {
     char     magic[4] = "CFG";
     char     gap_0[18];
     uint8_t  length;
-    uint32_t begin;
-    uint16_t item_size;
+    uint32_t begin     = RK_V286_HEADER_SIZE;
+    uint16_t item_size = RK_V286_ITEM_SIZE;
+    // external
+    static const size_t RK_V286_HEADER_SIZE;
+    static const size_t RK_V286_ITEM_SIZE;
 };
 
 static_assert(sizeof(RKCfgHeader) == 29);
@@ -38,5 +41,8 @@ static_assert(offsetof(RKCfgItem, name) == 2);
 static_assert(offsetof(RKCfgItem, image_path) == 82);
 static_assert(offsetof(RKCfgItem, address) == 602);
 static_assert(offsetof(RKCfgItem, is_selected) == 606);
+
+inline const size_t RKCfgHeader::RK_V286_HEADER_SIZE = sizeof(RKCfgHeader);
+inline const size_t RKCfgHeader::RK_V286_ITEM_SIZE   = sizeof(RKCfgItem);
 
 #pragma pack(pop)
