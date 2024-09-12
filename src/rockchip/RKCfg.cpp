@@ -7,105 +7,43 @@
 
 #include <spdlog/spdlog.h>
 
-void RKCfgFile::load(const std::string& path, std::error_code& ec) {
-    _cleanUp();
+std::optional<RKCfgFile> RKCfgFile::fromFile(const std::string& path, std::error_code& ec) {
     if (!std::filesystem::exists(path)) {
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::FileNotExists);
-        return;
+        return {};
     }
     auto file_size = std::filesystem::file_size(path);
     if (file_size < sizeof(RKCfgHeader)) {
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::IsNotRKCfgFile);
-        return;
+        return {};
     }
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open()) {
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::UnableToOpenFile);
-        return;
+        return {};
     }
-    file.read(reinterpret_cast<char*>(&mHeader), sizeof(mHeader));
-    if (strcmp(mHeader.magic, "CFG") != 0) {
+    RKCfgFile result;
+    file.read(reinterpret_cast<char*>(&result.m_header), sizeof(m_header));
+    if (strcmp(result.m_header.magic, "CFG") != 0) {
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::IsNotRKCfgFile);
-        return;
+        return {};
     }
-    if (mHeader.item_size != sizeof(RKCfgItem)) {
+    if (result.m_header.item_size != sizeof(RKCfgItem)) {
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::UnsupportedItemSize);
-        return;
+        return {};
     }
-    if (file_size != sizeof(mHeader) + mHeader.item_size * mHeader.length) {
+    if (file_size != sizeof(m_header) + result.m_header.item_size * result.m_header.length) {
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::AbnormalFileSize);
-        return;
+        return {};
     }
-    mItems.reserve(mHeader.length + 1);
-    for (size_t idx = 0; idx < mHeader.length; idx++) {
-        file.seekg(mHeader.begin + idx * mHeader.item_size, std::ios::beg);
+    result.m_items.reserve(result.m_header.length + 1);
+    for (size_t idx = 0; idx < result.m_header.length; idx++) {
+        file.seekg(result.m_header.begin + idx * result.m_header.item_size, std::ios::beg);
         RKCfgItem item{};
         file.read(reinterpret_cast<char*>(&item), sizeof(item));
-        mItems.emplace_back(std::move(item));
+        result.m_items.emplace_back(std::move(item));
     }
-}
-
-void RKCfgFile::save(const std::string& path, std::error_code& ec) const {
-    std::ofstream file(path, std::ios::binary | std::ios::trunc);
-    if (!file.is_open()) {
-        ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
-        return;
-    }
-    file.write(reinterpret_cast<const char*>(&mHeader), sizeof(mHeader));
-    for (auto& item : mItems) {
-        file.write(reinterpret_cast<const char*>(&item), sizeof(item));
-    }
-}
-
-void RKCfgFile::save_to_json(const std::string& path, std::error_code& ec) const {
-    nlohmann::json result;
-    result["header"]["size"]      = mHeader.begin;
-    result["header"]["item_size"] = mHeader.item_size;
-    for (auto& item : mItems) {
-        result["items"].emplace_back(nlohmann::json{
-            {"selected",   item.is_selected               },
-            {"address",    item.address                   },
-            {"name",       Char16ToString(item.name)      },
-            {"image_path", Char16ToString(item.image_path)}
-        });
-    }
-    std::ofstream file(path, std::ios::binary | std::ios::trunc);
-    if (!file.is_open()) {
-        ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
-        return;
-    }
-    file << result.dump(4);
-    file.close();
-}
-
-uint8_t RKCfgFile::getTableLength() const { return mHeader.length; }
-
-void RKCfgFile::addItem(const RKCfgItem& item) { mItems.emplace_back(item); }
-
-void RKCfgFile::addItem(const RKCfgItem& item, size_t index) { mItems.insert(mItems.begin() + index, item); }
-
-void RKCfgFile::removeItem(size_t index) { mItems.erase(mItems.begin() + index); }
-
-void RKCfgFile::updateItem(size_t index, const RKCfgItem& item) { mItems.at(index) = item; }
-
-RKCfgHeader const& RKCfgFile::getHeader() const { return mHeader; }
-
-RKCfgItemContainer const& RKCfgFile::getItems() const { return mItems; }
-
-void RKCfgFile::printDebugString() const {
-    spdlog::info("{:<12} {:#x}", "Header size:", mHeader.begin);
-    spdlog::info("{:<12} {:#x}", "Item size:", mHeader.item_size);
-    spdlog::info("Partitions({}): ", mHeader.length);
-    spdlog::info("    {:<10} {:10} {}", "Address", "Name", "Path");
-    for (auto& item : mItems) {
-        spdlog::info(
-            "[{}] {:#010x} {:<10} {}",
-            item.is_selected ? "x" : " ",
-            item.address,
-            Char16ToString(item.name),
-            Char16ToString(item.image_path)
-        );
-    }
+    return result;
 }
 
 std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::error_code& ec) {
@@ -180,7 +118,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         parts.emplace_back(name, *address, size);
     }
     RKCfgFile result;
-    result.mHeader = _makeHeader();
+    result.m_header = _makeHeader();
     for (auto& part : parts) {
         constexpr size_t MAX_PATH_SIZE = sizeof(RKCfgItem::name) / sizeof(decltype(RKCfgItem::name[0]));
 
@@ -215,7 +153,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         }
         item.address     = part.address;
         item.is_selected = true;
-        result.mItems.emplace_back(std::move(item));
+        result.m_items.emplace_back(std::move(item));
     }
     return result;
 }
@@ -225,9 +163,67 @@ std::optional<RKCfgFile> RKCfgFile::fromJson(const std::string& path, std::error
     return {};
 }
 
-void RKCfgFile::_cleanUp() {
-    mHeader = {};
-    mItems.clear();
+void RKCfgFile::save(const std::string& path, std::error_code& ec) const {
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    if (!file.is_open()) {
+        ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
+        return;
+    }
+    file.write(reinterpret_cast<const char*>(&m_header), sizeof(m_header));
+    for (auto& item : m_items) {
+        file.write(reinterpret_cast<const char*>(&item), sizeof(item));
+    }
+}
+
+void RKCfgFile::save_to_json(const std::string& path, std::error_code& ec) const {
+    nlohmann::json result;
+    result["header"]["size"]      = m_header.begin;
+    result["header"]["item_size"] = m_header.item_size;
+    for (auto& item : m_items) {
+        result["items"].emplace_back(nlohmann::json{
+            {"selected",   item.is_selected               },
+            {"address",    item.address                   },
+            {"name",       Char16ToString(item.name)      },
+            {"image_path", Char16ToString(item.image_path)}
+        });
+    }
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    if (!file.is_open()) {
+        ec = make_rkcfg_save_error(RKCfgSaveErrorCode::UnableToOpenFile);
+        return;
+    }
+    file << result.dump(4);
+    file.close();
+}
+
+uint8_t RKCfgFile::getTableLength() const { return m_header.length; }
+
+void RKCfgFile::addItem(const RKCfgItem& item) { m_items.emplace_back(item); }
+
+void RKCfgFile::addItem(const RKCfgItem& item, size_t index) { m_items.insert(m_items.begin() + index, item); }
+
+void RKCfgFile::removeItem(size_t index) { m_items.erase(m_items.begin() + index); }
+
+void RKCfgFile::updateItem(size_t index, const RKCfgItem& item) { m_items.at(index) = item; }
+
+RKCfgHeader const& RKCfgFile::getHeader() const { return m_header; }
+
+RKCfgItemContainer const& RKCfgFile::getItems() const { return m_items; }
+
+void RKCfgFile::printDebugString() const {
+    spdlog::info("{:<12} {:#x}", "Header size:", m_header.begin);
+    spdlog::info("{:<12} {:#x}", "Item size:", m_header.item_size);
+    spdlog::info("Partitions({}): ", m_header.length);
+    spdlog::info("    {:<10} {:10} {}", "Address", "Name", "Path");
+    for (auto& item : m_items) {
+        spdlog::info(
+            "[{}] {:#010x} {:<10} {}",
+            item.is_selected ? "x" : " ",
+            item.address,
+            Char16ToString(item.name),
+            Char16ToString(item.image_path)
+        );
+    }
 }
 
 RKCfgHeader RKCfgFile::_makeHeader() {

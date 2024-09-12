@@ -12,9 +12,14 @@ using RKParameter        = std::unordered_map<std::string, std::string>;
 
 class RKCfgFile {
 public:
-    RKCfgFile() = default;
+    // TODO: Replace with: std::expected
+    static std::optional<RKCfgFile> fromFile(const std::string& path, std::error_code& ec);
 
-    void load(const std::string& path, std::error_code& ec);
+    // TODO: Replace with: std::expected
+    static std::optional<RKCfgFile> fromParameter(const std::string& path, std::error_code& ec);
+
+    // TODO: Replace with: std::expected
+    static std::optional<RKCfgFile> fromJson(const std::string& path, std::error_code& ec);
 
     void save(const std::string& path, std::error_code& ec) const;
     void save_to_json(const std::string& path, std::error_code& ec) const;
@@ -35,17 +40,11 @@ public:
 
     void printDebugString() const;
 
-    // TODO: Replace with: std::expected
-    static std::optional<RKCfgFile> fromParameter(const std::string& path, std::error_code& ec);
-
-    // TODO: Replace with: std::expected
-    static std::optional<RKCfgFile> fromJson(const std::string& path, std::error_code& ec);
-
 private:
-    RKCfgHeader        mHeader{};
-    RKCfgItemContainer mItems;
-
-    void _cleanUp();
+    RKCfgFile() = default;
 
     static RKCfgHeader _makeHeader();
+
+    RKCfgHeader        m_header{};
+    RKCfgItemContainer m_items;
 };

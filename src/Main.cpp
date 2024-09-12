@@ -58,13 +58,12 @@ int main(int argc, char** argv) {
             }
             file->printDebugString();
         } else {
-            RKCfgFile file;
-            file.load(input_file_path, ec);
+            auto file = RKCfgFile::fromFile(input_file_path, ec);
             if (ec) {
                 spdlog::error(ec.message());
                 return -1;
             }
-            file.printDebugString();
+            file->printDebugString();
         }
     }
 
@@ -76,8 +75,7 @@ int main(int argc, char** argv) {
         } else if (input_file_path.ends_with(".txt")) {
             file = RKCfgFile::fromParameter(input_file_path, ec);
         } else {
-            file = std::make_optional<RKCfgFile>();
-            file->load(input_file_path, ec);
+            file = RKCfgFile::fromFile(input_file_path, ec);
         }
         if (ec) {
             spdlog::error(ec.message());
