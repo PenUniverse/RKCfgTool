@@ -27,10 +27,8 @@ public:
 
     nlohmann::json toJson() const;
 
-    uint8_t getTableLength() const;
-
-    void addItem(const RKCfgItem& item);
-    void addItem(const RKCfgItem& item, size_t index);
+    void addItem(const RKCfgItem& item, bool auto_increase_length = true);
+    void addItem(const RKCfgItem& item, size_t index, bool auto_increase_length = true);
 
     RKCfgItem const& getItem(size_t index) const;
 

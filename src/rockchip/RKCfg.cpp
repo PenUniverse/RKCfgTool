@@ -43,7 +43,7 @@ std::optional<RKCfgFile> RKCfgFile::fromFile(const std::string& path, std::error
         file.seekg(result.m_header.begin + idx * result.m_header.item_size, std::ios::beg);
         RKCfgItem item;
         file.read(reinterpret_cast<char*>(&item), sizeof(item));
-        result.m_items.emplace_back(std::move(item));
+        result.addItem(item, false);
     }
     return result;
 }
@@ -119,11 +119,12 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         if (size_str != "-") { // grow
             size = StringToUInt32(size_str);
             if (!size) {
-                StringRemoveSuffix(name, ":grow"); // extend to maximum position.
                 spdlog::debug("Invalid size. (4)");
                 ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
                 return {};
             }
+        } else {
+            StringRemoveSuffix(name, ":grow"); // extend to maximum position.
         }
 
         parts.emplace_back(name, *address, size);
@@ -135,13 +136,13 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
     StringToChar16("MiniLoaderAll.bin", loader.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
     loader.address     = 0x00000000;
     loader.is_selected = true;
-    result.m_items.emplace_back(loader);
+    result.addItem(loader);
     RKCfgItem parameter;
     StringToChar16("parameter", parameter.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
     StringToChar16(path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
     parameter.address     = 0x00000000;
     parameter.is_selected = true;
-    result.m_items.emplace_back(parameter);
+    result.addItem(parameter);
     for (auto& part : parts) {
         RKCfgItem item;
         if (!StringToChar16(part.name, item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE)) {
@@ -174,8 +175,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         }
         item.address     = part.address;
         item.is_selected = true;
-        result.m_items.emplace_back(std::move(item));
-        result.m_header.length++;
+        result.addItem(item);
     }
     return result;
 }
@@ -203,14 +203,13 @@ std::optional<RKCfgFile> RKCfgFile::fromJson(const std::string& path, std::error
             ec = make_rkcfg_load_error(RKCfgLoadErrorCode::UnsupportedItemSize);
             return {};
         }
-        file.m_header.length = data["items"].size();
         for (auto& item_data : data["items"]) {
             RKCfgItem item;
             StringToChar16(item_data["name"], item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
             StringToChar16(item_data["image_path"], item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
             item.address     = item_data["address"];
             item.is_selected = item_data["is_selected"];
-            file.m_items.emplace_back(item);
+            file.addItem(item);
         }
         return file;
     } catch (const json::exception& e) {
@@ -236,7 +235,7 @@ void RKCfgFile::save(const std::string& path, SaveMode mode, std::error_code& ec
         return;
     }
     file.write(reinterpret_cast<const char*>(&m_header), sizeof(m_header));
-    for (auto& item : m_items) {
+    for (auto& item : getItems()) {
         file.write(reinterpret_cast<const char*>(&item), sizeof(item));
     }
 }
@@ -245,7 +244,7 @@ nlohmann::json RKCfgFile::toJson() const {
     nlohmann::json result;
     result["header"]["size"]      = m_header.begin;
     result["header"]["item_size"] = m_header.item_size;
-    for (auto& item : m_items) {
+    for (auto& item : getItems()) {
         result["items"].emplace_back(nlohmann::json{
             {"is_selected", (bool)item.is_selected         },
             {"address",     item.address                   },
@@ -256,13 +255,20 @@ nlohmann::json RKCfgFile::toJson() const {
     return result;
 }
 
-uint8_t RKCfgFile::getTableLength() const { return m_header.length; }
+void RKCfgFile::addItem(const RKCfgItem& item, bool auto_increase_length) {
+    m_items.emplace_back(item);
+    if (auto_increase_length) m_header.length++;
+}
 
-void RKCfgFile::addItem(const RKCfgItem& item) { m_items.emplace_back(item); }
+void RKCfgFile::addItem(const RKCfgItem& item, size_t index, bool auto_increase_length) {
+    m_items.insert(m_items.begin() + index, item);
+    if (auto_increase_length) m_header.length++;
+}
 
-void RKCfgFile::addItem(const RKCfgItem& item, size_t index) { m_items.insert(m_items.begin() + index, item); }
-
-void RKCfgFile::removeItem(size_t index) { m_items.erase(m_items.begin() + index); }
+void RKCfgFile::removeItem(size_t index) {
+    m_items.erase(m_items.begin() + index);
+    m_header.length--;
+}
 
 void RKCfgFile::updateItem(size_t index, const RKCfgItem& item) { m_items.at(index) = item; }
 
@@ -275,13 +281,15 @@ void RKCfgFile::printDebugString() const {
     spdlog::info("{:<12} {:#x}", "Item size:", m_header.item_size);
     spdlog::info("Partitions({}): ", m_header.length);
     spdlog::info("    {:<10} {:10} {}", "Address", "Name", "Path");
-    for (auto& item : m_items) {
+    for (auto& item : getItems()) {
+        auto name       = Char16ToString(item.name);
+        auto image_path = Char16ToString(item.image_path);
         spdlog::info(
             "[{}] {:#010x} {:<10} {}",
             item.is_selected ? "x" : " ",
             item.address,
-            Char16ToString(item.name),
-            Char16ToString(item.image_path)
+            name.empty() ? "(empty)" : name,
+            image_path.empty() ? "(empty)" : image_path
         );
     }
 }
