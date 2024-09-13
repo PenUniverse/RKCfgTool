@@ -48,7 +48,7 @@ std::optional<RKCfgFile> RKCfgFile::fromFile(const std::string& path, std::error
     return result;
 }
 
-std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::error_code& ec) {
+std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool auto_scan_image, std::error_code& ec) {
     if (!std::filesystem::exists(path)) {
         ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::FileNotExists);
         return {};
@@ -130,16 +130,18 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         parts.emplace_back(name, *address, size);
     }
     RKCfgFile result;
+    auto      base_dir = std::filesystem::path(path).parent_path();
     // add rkcfg default parts
     RKCfgItem loader;
     StringToChar16("Loader", loader.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
-    StringToChar16("MiniLoaderAll.bin", loader.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+    if (auto_scan_image && std::filesystem::exists(base_dir / "MiniLoaderAll.bin"))
+        StringToChar16("MiniLoaderAll.bin", loader.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
     loader.address     = 0x00000000;
     loader.is_selected = true;
     result.addItem(loader);
     RKCfgItem parameter;
     StringToChar16("parameter", parameter.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
-    StringToChar16(path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+    if (auto_scan_image) StringToChar16(path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
     parameter.address     = 0x00000000;
     parameter.is_selected = true;
     result.addItem(parameter);
@@ -153,8 +155,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, std::
         auto potential_image_name = part.name;
         auto potential_image_path = std::string();
 
-        auto base_dir = std::filesystem::path(path).parent_path();
-        auto scan     = [&]() {
+        auto scan = [&]() {
             for (auto& entry : std::filesystem::directory_iterator(base_dir)) {
                 auto this_path = entry.path();
                 if (entry.is_regular_file() && this_path.string().ends_with(potential_image_name)) {

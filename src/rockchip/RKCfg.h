@@ -18,7 +18,7 @@ public:
     static std::optional<RKCfgFile> fromFile(const std::string& path, std::error_code& ec);
 
     // TODO: Replace with: std::expected
-    static std::optional<RKCfgFile> fromParameter(const std::string& path, std::error_code& ec);
+    static std::optional<RKCfgFile> fromParameter(const std::string& path, bool auto_scan_image, std::error_code& ec);
 
     // TODO: Replace with: std::expected
     static std::optional<RKCfgFile> fromJson(const std::string& path, std::error_code& ec);

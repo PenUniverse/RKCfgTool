@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
         if (input_file_path.ends_with(".json")) {
             file = RKCfgFile::fromJson(input_file_path, ec);
         } else if (input_file_path.ends_with(".txt")) {
-            file = RKCfgFile::fromParameter(input_file_path, ec);
+            file = RKCfgFile::fromParameter(input_file_path, program.get<bool>("--enable-auto-scan"), ec);
         } else {
             file = RKCfgFile::fromFile(input_file_path, ec);
         }
