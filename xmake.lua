@@ -5,7 +5,7 @@ add_requires('spdlog        1.14.1')
 add_requires('icu4c         75.1')
 add_requires('nlohmann_json 3.11.3')
 
-target('para2cfg')
+target('rkcfgtool')
     set_kind('binary')
     add_files('src/**.cpp')
     add_includedirs('src')
