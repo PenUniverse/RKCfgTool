@@ -131,11 +131,13 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool 
     }
     RKCfgFile result;
     auto      base_dir = std::filesystem::path(path).parent_path();
+    if (base_dir.empty()) base_dir = "./";
     // add rkcfg default parts
     RKCfgItem loader;
     StringToChar16("Loader", loader.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
     if (auto_scan_image && std::filesystem::exists(base_dir / "MiniLoaderAll.bin"))
         StringToChar16("MiniLoaderAll.bin", loader.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+    spdlog::debug("base_dir: {}", base_dir.string());
     loader.address     = 0x00000000;
     loader.is_selected = true;
     result.addItem(loader);
@@ -158,7 +160,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool 
         auto scan = [&]() {
             for (auto& entry : std::filesystem::directory_iterator(base_dir)) {
                 auto this_path = entry.path();
-                if (entry.is_regular_file() && this_path.string().ends_with(potential_image_name)) {
+                if (entry.is_regular_file() && this_path.filename().string().starts_with(potential_image_name)) {
                     potential_image_path = this_path.filename();
                     break;
                 }
