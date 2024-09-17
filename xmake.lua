@@ -10,7 +10,7 @@ target('rkcfgtool')
     add_files('src/**.cpp')
     add_includedirs('src')
     set_warnings('all')
-    set_languages('c99', 'c++23')
+    set_languages('c99', 'c++20')
     add_packages('argparse', 'spdlog', 'icu4c', 'nlohmann_json')
     if is_mode('debug') then 
         add_defines('DEBUG')
