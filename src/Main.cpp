@@ -63,9 +63,9 @@ int main(int argc, char** argv) try {
         RKCfgFile::AutoScanArgument auto_scan_args;
         auto_scan_args.enabled = program.get<bool>("--enable-auto-scan");
         auto_scan_args.prefix  = program.get<std::string>("--set-auto-scan-prefix");
-        if (auto_scan_args.prefix.contains("/")) {
+        if (auto_scan_args.prefix.find("/") != std::string::npos) {
             if (!auto_scan_args.prefix.ends_with("/")) auto_scan_args.prefix += "/";
-        } else if (auto_scan_args.prefix.contains("\\")) {
+        } else if (auto_scan_args.prefix.find("\\") != std::string::npos) {
             if (!auto_scan_args.prefix.ends_with("\\")) auto_scan_args.prefix += "\\";
         }
         file = RKCfgFile::fromParameter(input_file_path, auto_scan_args, ec);
