@@ -168,7 +168,7 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
                 for (auto& entry : std::filesystem::directory_iterator(base_dir)) {
                     auto this_path = entry.path();
                     if (entry.is_regular_file() && this_path.filename().string().starts_with(potential_image_name)) {
-                        potential_image_path = this_path.filename();
+                        potential_image_path = this_path.filename().string();
                         break;
                     }
                 }
