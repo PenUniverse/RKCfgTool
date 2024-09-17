@@ -75,13 +75,20 @@ public:
         size_t value;
     };
 
+    struct AutoScanArgument {
+        bool        enabled;
+        std::string prefix;
+        AutoScanArgument() : enabled{}, prefix{} {}
+    };
+
     using ItemFilterCollection = std::vector<std::unique_ptr<const ItemFilter>>;
 
     // TODO: Replace with: std::expected
     static std::optional<RKCfgFile> fromFile(const std::string& path, std::error_code& ec);
 
     // TODO: Replace with: std::expected
-    static std::optional<RKCfgFile> fromParameter(const std::string& path, bool auto_scan_image, std::error_code& ec);
+    static std::optional<RKCfgFile>
+    fromParameter(const std::string& path, AutoScanArgument auto_scan_args, std::error_code& ec);
 
     // TODO: Replace with: std::expected
     static std::optional<RKCfgFile> fromJson(const std::string& path, std::error_code& ec);

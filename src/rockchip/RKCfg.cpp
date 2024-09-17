@@ -48,7 +48,8 @@ std::optional<RKCfgFile> RKCfgFile::fromFile(const std::string& path, std::error
     return result;
 }
 
-std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool auto_scan_image, std::error_code& ec) {
+std::optional<RKCfgFile>
+RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_args, std::error_code& ec) {
     if (!std::filesystem::exists(path)) {
         ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::FileNotExists);
         return {};
@@ -135,15 +136,20 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool 
     // add rkcfg default parts
     RKCfgItem loader;
     StringToChar16("Loader", loader.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
-    if (auto_scan_image && std::filesystem::exists(base_dir / "MiniLoaderAll.bin"))
-        StringToChar16("MiniLoaderAll.bin", loader.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+    if (auto_scan_args.enabled && std::filesystem::exists(base_dir / "MiniLoaderAll.bin"))
+        StringToChar16(
+            auto_scan_args.prefix + "MiniLoaderAll.bin",
+            loader.image_path,
+            RKCfgItem::RK_V286_MAX_PATH_SIZE
+        );
     spdlog::debug("base_dir: {}", base_dir.string());
     loader.address     = 0x00000000;
     loader.is_selected = true;
     result.addItem(loader);
     RKCfgItem parameter;
     StringToChar16("parameter", parameter.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
-    if (auto_scan_image) StringToChar16(path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+    if (auto_scan_args.enabled)
+        StringToChar16(auto_scan_args.prefix + path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
     parameter.address     = 0x00000000;
     parameter.is_selected = true;
     result.addItem(parameter);
@@ -153,7 +159,7 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool 
             ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
             return {};
         }
-        if (auto_scan_image) {
+        if (auto_scan_args.enabled) {
 
             auto potential_image_name = part.name;
             auto potential_image_path = std::string();
@@ -175,7 +181,11 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool 
             }
             if (!potential_image_path.empty()) {
                 spdlog::info("Selected {} as the image file of {}.", potential_image_path, Char16ToString(item.name));
-                StringToChar16(potential_image_path, item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+                StringToChar16(
+                    auto_scan_args.prefix + potential_image_path,
+                    item.image_path,
+                    RKCfgItem::RK_V286_MAX_PATH_SIZE
+                );
             }
         }
         item.address     = part.address;

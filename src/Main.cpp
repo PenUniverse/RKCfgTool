@@ -30,8 +30,12 @@ int main(int argc, char** argv) try {
         .flag();
 
     program.add_argument("--enable-auto-scan")
-        .help("When converting  parameter.txt to cfg file, the image file in the current directory will be automatically scanned and written.")
+        .help("When converting  parameter.txt to cfg file, the image file in the current directory will be automatically scanned and applied.")
         .flag();
+    
+    program.add_argument("--set-auto-scan-prefix")
+        .help("Add a prefix to the results of the automatic image_path scan, will add a slash at the end (if not already there). Example: './Output'")
+        .default_value("");
 
     // program.add_argument("--add-partition")
     //     .help("Add a partition to the input file. Syntax: 'address:name:image_path', example: '0x0x0123a000:userdisk:'.")
@@ -56,7 +60,15 @@ int main(int argc, char** argv) try {
     if (input_file_path.ends_with(".json")) {
         file = RKCfgFile::fromJson(input_file_path, ec);
     } else if (input_file_path.ends_with(".txt")) {
-        file = RKCfgFile::fromParameter(input_file_path, program.get<bool>("--enable-auto-scan"), ec);
+        RKCfgFile::AutoScanArgument auto_scan_args;
+        auto_scan_args.enabled = program.get<bool>("--enable-auto-scan");
+        auto_scan_args.prefix  = program.get<std::string>("--set-auto-scan-prefix");
+        if (auto_scan_args.prefix.contains("/")) {
+            if (!auto_scan_args.prefix.ends_with("/")) auto_scan_args.prefix += "/";
+        } else if (auto_scan_args.prefix.contains("\\")) {
+            if (!auto_scan_args.prefix.ends_with("\\")) auto_scan_args.prefix += "\\";
+        }
+        file = RKCfgFile::fromParameter(input_file_path, auto_scan_args, ec);
     } else {
         file = RKCfgFile::fromFile(input_file_path, ec);
     }
