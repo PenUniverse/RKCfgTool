@@ -22,10 +22,10 @@ Optional arguments:
   -o, --output        Set the output file path (if any). 
   -s, --show          Print the partition table information contained in the cfg file. 
   --enable-auto-scan  When converting  parameter.txt to cfg file, the image file in the current directory will be automatically scanned and written. 
-  --remove-partition  Remove all matching partitions from the input. Syntax: '(address|name|image_path|index)=..., example: 'name=userdisk'. [may be repeated]
+  --remove-partition  Remove all matching partitions from the input. Syntax: '(address|name|image_path|index):..., example: 'name:userdisk'. [may be repeated]
 ```
 
-For example, I now have the following directory structure:
+For example, We have the following directory structure:
 ```bash
 $ ls
 boot.img  MiniLoaderAll.bin  misc.img  parameter.txt  recovery.img  rootfs.img  trust.img  uboot.img
@@ -47,16 +47,16 @@ mtdparts=rk29xxnand:0x00002000@0x00004000(uboot),...,-@0x0123a000(userdisk:grow)
 uuid:rootfs=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-Now, I can create a cfg file that can be read by RKDevTool directly with the following command:
+Now, We can create a cfg file that can be read by RKDevTool directly with the following command:
 ```
-./para2cfg -i parameter.txt -o test.cfg --enable-auto-scan
+./rkcfgtool -i parameter.txt -o test.cfg --enable-auto-scan
 ```
 
 `--enable-auto-scan` will automatically scan all files in the same directory as `parameter.txt`, and automatically fill in the image_path field if the partition name may match a file.
 
 If you need to delete some partition from the result(take userdisk as an example), use the following command:
 ```
-./para2cfg -i parameter.txt -o test.cfg --enable-auto-scan --remove-partition "name=userdisk"
+./rkcfgtool -i parameter.txt -o test.cfg --enable-auto-scan --remove-partition "name:swap" --remove-partition "name:userdisk"
 ```
 
 ### License

@@ -153,28 +153,30 @@ std::optional<RKCfgFile> RKCfgFile::fromParameter(const std::string& path, bool 
             ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
             return {};
         }
-        // scan potential image file
-        auto potential_image_name = part.name;
-        auto potential_image_path = std::string();
+        if (auto_scan_image) {
 
-        auto scan = [&]() {
-            for (auto& entry : std::filesystem::directory_iterator(base_dir)) {
-                auto this_path = entry.path();
-                if (entry.is_regular_file() && this_path.filename().string().starts_with(potential_image_name)) {
-                    potential_image_path = this_path.filename();
-                    break;
+            auto potential_image_name = part.name;
+            auto potential_image_path = std::string();
+
+            auto scan = [&]() {
+                for (auto& entry : std::filesystem::directory_iterator(base_dir)) {
+                    auto this_path = entry.path();
+                    if (entry.is_regular_file() && this_path.filename().string().starts_with(potential_image_name)) {
+                        potential_image_path = this_path.filename();
+                        break;
+                    }
                 }
-            }
-        };
-        scan();
-        if (potential_image_path.empty()) {
-            StringRemoveSuffix(potential_image_name, "_a");
-            StringRemoveSuffix(potential_image_name, "_b");
+            };
             scan();
-        }
-        if (!potential_image_path.empty()) {
-            spdlog::info("Selected {} as the image file of {}.", potential_image_path, Char16ToString(item.name));
-            StringToChar16(potential_image_path, item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+            if (potential_image_path.empty()) {
+                StringRemoveSuffix(potential_image_name, "_a");
+                StringRemoveSuffix(potential_image_name, "_b");
+                scan();
+            }
+            if (!potential_image_path.empty()) {
+                spdlog::info("Selected {} as the image file of {}.", potential_image_path, Char16ToString(item.name));
+                StringToChar16(potential_image_path, item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+            }
         }
         item.address     = part.address;
         item.is_selected = true;
@@ -238,7 +240,7 @@ void RKCfgFile::save(const std::string& path, SaveMode mode, std::error_code& ec
         return;
     }
     file.write(reinterpret_cast<const char*>(&m_header), sizeof(m_header));
-    for (auto& item : getItems()) {
+    for (auto& item : m_items) {
         file.write(reinterpret_cast<const char*>(&item), sizeof(item));
     }
 }
@@ -247,7 +249,7 @@ nlohmann::json RKCfgFile::toJson() const {
     nlohmann::json result;
     result["header"]["size"]      = m_header.begin;
     result["header"]["item_size"] = m_header.item_size;
-    for (auto& item : getItems()) {
+    for (auto& item : m_items) {
         result["items"].emplace_back(nlohmann::json{
             {"is_selected", (bool)item.is_selected         },
             {"address",     item.address                   },
@@ -273,6 +275,22 @@ void RKCfgFile::removeItem(size_t index) {
     m_header.length--;
 }
 
+void RKCfgFile::removeItem(const ItemFilterCollection& filters) {
+    for (size_t idx = 0; idx < m_items.size();) {
+        bool is_deleted{};
+        for (auto& filter : filters) {
+            if (filter->filt(idx, m_items.at(idx))) {
+                m_items.erase(m_items.begin() + idx);
+                m_header.length--;
+                is_deleted = true;
+                break;
+            }
+        }
+        if (is_deleted) continue;
+        else idx++;
+    }
+}
+
 void RKCfgFile::updateItem(size_t index, const RKCfgItem& item) { m_items.at(index) = item; }
 
 RKCfgHeader const& RKCfgFile::getHeader() const { return m_header; }
@@ -284,7 +302,7 @@ void RKCfgFile::printDebugString() const {
     spdlog::info("{:<12} {:#x}", "Item size:", m_header.item_size);
     spdlog::info("Partitions({}): ", m_header.length);
     spdlog::info("    {:<10} {:10} {}", "Address", "Name", "Path");
-    for (auto& item : getItems()) {
+    for (auto& item : m_items) {
         auto name       = Char16ToString(item.name);
         auto image_path = Char16ToString(item.image_path);
         spdlog::info(
