@@ -7,6 +7,8 @@
 
 #include <spdlog/spdlog.h>
 
+namespace rockchip {
+
 std::optional<RKCfgFile> RKCfgFile::fromFile(const std::string& path, std::error_code& ec) {
     if (!std::filesystem::exists(path)) {
         ec = make_rkcfg_load_error(RKCfgLoadErrorCode::FileNotExists);
@@ -109,7 +111,7 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
         auto address_str = mtdpart.substr(at_mark_pos + 1, 10);
 
         std::optional<uint32_t> size;
-        std::optional<uint32_t> address = StringToUInt32(address_str);
+        std::optional<uint32_t> address = util::string::to_uint32(address_str);
 
         if (!address) {
             spdlog::debug("Invalid address. (3)");
@@ -118,14 +120,14 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
         }
 
         if (size_str != "-") { // grow
-            size = StringToUInt32(size_str);
+            size = util::string::to_uint32(size_str);
             if (!size) {
                 spdlog::debug("Invalid size. (4)");
                 ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
                 return {};
             }
         } else {
-            StringRemoveSuffix(name, ":grow"); // extend to maximum position.
+            util::string::remove_suffix(name, ":grow"); // extend to maximum position.
         }
 
         parts.emplace_back(name, *address, size);
@@ -135,9 +137,9 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
     if (base_dir.empty()) base_dir = "./";
     // add rkcfg default parts
     RKCfgItem loader;
-    StringToChar16("Loader", loader.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
+    util::string::to_char16("Loader", loader.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
     if (auto_scan_args.enabled && std::filesystem::exists(base_dir / "MiniLoaderAll.bin"))
-        StringToChar16(
+        util::string::to_char16(
             auto_scan_args.prefix + "MiniLoaderAll.bin",
             loader.image_path,
             RKCfgItem::RK_V286_MAX_PATH_SIZE
@@ -147,15 +149,15 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
     loader.is_selected = true;
     result.addItem(loader);
     RKCfgItem parameter;
-    StringToChar16("parameter", parameter.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
+    util::string::to_char16("parameter", parameter.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
     if (auto_scan_args.enabled)
-        StringToChar16(auto_scan_args.prefix + path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+        util::string::to_char16(auto_scan_args.prefix + path, parameter.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
     parameter.address     = 0x00000000;
     parameter.is_selected = true;
     result.addItem(parameter);
     for (auto& part : parts) {
         RKCfgItem item;
-        if (!StringToChar16(part.name, item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE)) {
+        if (!util::string::to_char16(part.name, item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE)) {
             ec = make_rkcfg_convert_param_error(RKConvertParamErrorCode::IllegalMtdPartFormat);
             return {};
         }
@@ -168,6 +170,7 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
                 for (auto& entry : std::filesystem::directory_iterator(base_dir)) {
                     auto this_path = entry.path();
                     if (entry.is_regular_file() && this_path.filename().string().starts_with(potential_image_name)) {
+                        // msvc on windows can only implicitly convert std::filesystem::path to std::wstring.
                         potential_image_path = this_path.filename().string();
                         break;
                     }
@@ -175,13 +178,17 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
             };
             scan();
             if (potential_image_path.empty()) {
-                StringRemoveSuffix(potential_image_name, "_a");
-                StringRemoveSuffix(potential_image_name, "_b");
+                util::string::remove_suffix(potential_image_name, "_a");
+                util::string::remove_suffix(potential_image_name, "_b");
                 scan();
             }
             if (!potential_image_path.empty()) {
-                spdlog::info("Selected {} as the image file of {}.", potential_image_path, Char16ToString(item.name));
-                StringToChar16(
+                spdlog::info(
+                    "Selected {} as the image file of {}.",
+                    potential_image_path,
+                    util::string::from_char16(item.name)
+                );
+                util::string::to_char16(
                     auto_scan_args.prefix + potential_image_path,
                     item.image_path,
                     RKCfgItem::RK_V286_MAX_PATH_SIZE
@@ -220,8 +227,8 @@ std::optional<RKCfgFile> RKCfgFile::fromJson(const std::string& path, std::error
         }
         for (auto& item_data : data["items"]) {
             RKCfgItem item;
-            StringToChar16(item_data["name"], item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
-            StringToChar16(item_data["image_path"], item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
+            util::string::to_char16(item_data["name"], item.name, RKCfgItem::RK_V286_MAX_NAME_SIZE);
+            util::string::to_char16(item_data["image_path"], item.image_path, RKCfgItem::RK_V286_MAX_PATH_SIZE);
             item.address     = item_data["address"];
             item.is_selected = item_data["is_selected"];
             file.addItem(item);
@@ -261,10 +268,10 @@ nlohmann::json RKCfgFile::toJson() const {
     result["header"]["item_size"] = m_header.item_size;
     for (auto& item : m_items) {
         result["items"].emplace_back(nlohmann::json{
-            {"is_selected", (bool)item.is_selected         },
-            {"address",     item.address                   },
-            {"name",        Char16ToString(item.name)      },
-            {"image_path",  Char16ToString(item.image_path)}
+            {"is_selected", (bool)item.is_selected                    },
+            {"address",     item.address                              },
+            {"name",        util::string::from_char16(item.name)      },
+            {"image_path",  util::string::from_char16(item.image_path)}
         });
     }
     return result;
@@ -313,8 +320,8 @@ void RKCfgFile::printDebugString() const {
     spdlog::info("Partitions({}): ", m_header.length);
     spdlog::info("    {:<10} {:10} {}", "Address", "Name", "Path");
     for (auto& item : m_items) {
-        auto name       = Char16ToString(item.name);
-        auto image_path = Char16ToString(item.image_path);
+        auto name       = util::string::from_char16(item.name);
+        auto image_path = util::string::from_char16(item.image_path);
         spdlog::info(
             "[{}] {:#010x} {:<10} {}",
             item.is_selected ? "x" : " ",
@@ -324,3 +331,5 @@ void RKCfgFile::printDebugString() const {
         );
     }
 }
+
+} // namespace rockchip

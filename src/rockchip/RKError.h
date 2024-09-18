@@ -2,6 +2,8 @@
 
 #include <system_error>
 
+namespace rockchip {
+
 // LoadError
 
 enum class RKCfgLoadErrorCode {
@@ -113,3 +115,5 @@ inline const RKConvertParamErrorCategory rkcfg_convert_param_error_category{};
 inline std::error_code make_rkcfg_convert_param_error(RKConvertParamErrorCode ec) {
     return {static_cast<int>(ec), rkcfg_convert_param_error_category};
 }
+
+} // namespace rockchip

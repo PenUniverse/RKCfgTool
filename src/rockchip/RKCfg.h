@@ -9,6 +9,8 @@
 #include "RKError.h"
 #include "RKPreDefines.h"
 
+namespace rockchip {
+
 using RKCfgItemContainer = std::vector<RKCfgItem>;
 using RKParameter        = std::unordered_map<std::string, std::string>;
 
@@ -45,7 +47,9 @@ public:
 
         Type getType() const override { return Name; }
 
-        bool filt(size_t idx, const RKCfgItem& item) const override { return Char16ToString(item.name) == value; }
+        bool filt(size_t idx, const RKCfgItem& item) const override {
+            return util::string::from_char16(item.name) == value;
+        }
 
     private:
         std::string value;
@@ -57,7 +61,9 @@ public:
 
         Type getType() const override { return ImagePath; }
 
-        bool filt(size_t idx, const RKCfgItem& item) const override { return Char16ToString(item.image_path) == value; }
+        bool filt(size_t idx, const RKCfgItem& item) const override {
+            return util::string::from_char16(item.image_path) == value;
+        }
 
     private:
         std::string value;
@@ -118,3 +124,5 @@ private:
     RKCfgHeader        m_header{};
     RKCfgItemContainer m_items;
 };
+
+} // namespace rockchip

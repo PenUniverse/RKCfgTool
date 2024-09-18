@@ -4,11 +4,15 @@
 #include <optional>
 #include <string>
 
-std::string Char16ToString(const char16_t* str);
+namespace util::string {
 
-bool StringToChar16(const std::string& str, char16_t* des, size_t len);
+std::string from_char16(const char16_t* str);
+bool        to_char16(const std::string& str, char16_t* des, size_t len);
 
 // TODO: Replace with: std::expected
-std::optional<uint32_t> StringToUInt32(const std::string& str);
+std::optional<uint32_t> to_uint32(const std::string& str);
 
-void StringRemoveSuffix(std::string& str, const std::string& suffix);
+void remove_suffix(std::string& str, const std::string& suffix);
+
+
+} // namespace util::string

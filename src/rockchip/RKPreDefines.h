@@ -9,6 +9,8 @@
 
 #pragma pack(push, 1)
 
+namespace rockchip {
+
 struct RKCfgHeader {
     char     magic[4] = "CFG";
     char     gap_0[18];
@@ -55,5 +57,7 @@ inline const size_t RKCfgHeader::RK_V286_ITEM_SIZE   = sizeof(RKCfgItem);
 inline const size_t RKCfgItem::RK_V286_MAX_NAME_SIZE = sizeof(RKCfgItem::name) / sizeof(decltype(RKCfgItem::name[0]));
 inline const size_t RKCfgItem::RK_V286_MAX_PATH_SIZE =
     sizeof(RKCfgItem::image_path) / sizeof(decltype(RKCfgItem::image_path[0]));
+
+} // namespace rockchip
 
 #pragma pack(pop)

@@ -3,6 +3,8 @@
 
 #include "rockchip/RKCfg.h"
 
+using namespace rockchip;
+
 int main(int argc, char** argv) try {
 
     // ---  Logger  ---
@@ -122,7 +124,7 @@ int main(int argc, char** argv) try {
             RKCfgFile::ItemFilterCollection filters;
             for (const auto& [key, value] : kv_result) {
                 if (key == "address") {
-                    auto address = StringToUInt32(value);
+                    auto address = util::string::to_uint32(value);
                     if (!address) {
                         spdlog::error("Syntax error: {} is not a number.", value);
                         return -1;
@@ -133,7 +135,7 @@ int main(int argc, char** argv) try {
                 } else if (key == "image_path") {
                     filters.emplace_back(new RKCfgFile::ImagePathItemFilter(value));
                 } else if (key == "index") {
-                    auto index = StringToUInt32(value);
+                    auto index = util::string::to_uint32(value);
                     if (!index) {
                         spdlog::error("Syntax error: {} is not a number.", value);
                         return -1;

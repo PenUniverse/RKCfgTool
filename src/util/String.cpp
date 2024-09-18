@@ -2,13 +2,15 @@
 
 #include <unicode/unistr.h>
 
-std::string Char16ToString(const char16_t* str) {
+namespace util::string {
+
+std::string from_char16(const char16_t* str) {
     icu::UnicodeString unicode(str);
     std::string        result;
     return unicode.toUTF8String(result);
 }
 
-bool StringToChar16(const std::string& str, char16_t* des, size_t len) {
+bool to_char16(const std::string& str, char16_t* des, size_t len) {
     // icu::UnicodeString uses UTF-16 to store strings by default.
 
     auto unicode = icu::UnicodeString::fromUTF8(str);
@@ -18,7 +20,7 @@ bool StringToChar16(const std::string& str, char16_t* des, size_t len) {
     return true;
 }
 
-std::optional<uint32_t> StringToUInt32(const std::string& str) {
+std::optional<uint32_t> to_uint32(const std::string& str) {
     char* str_end = nullptr;
     errno         = 0;
 
@@ -31,8 +33,10 @@ std::optional<uint32_t> StringToUInt32(const std::string& str) {
     return value;
 }
 
-void StringRemoveSuffix(std::string& str, const std::string& suffix) {
+void remove_suffix(std::string& str, const std::string& suffix) {
     if (str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0) {
         str.erase(str.size() - suffix.size());
     }
 }
+
+} // namespace util::string
