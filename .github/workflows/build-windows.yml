@@ -35,6 +35,9 @@ jobs:
 
       - run: |
           xmake -v -y
+      
+      - run: |
+          Copy-Item "$env:USERPROFILE\AppData\Local\.xmake\packages\i\icu4c\*\*\bin\*.dll" -Destination build\windows\x64\ -Force
 
       - uses: actions/upload-artifact@v4
         with:
