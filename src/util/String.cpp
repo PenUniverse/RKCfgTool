@@ -33,6 +33,12 @@ std::optional<uint32_t> to_uint32(const std::string& str) {
     return value;
 }
 
+void remove_prefix(std::string& str, const std::string& prefix) {
+    if (str.size() >= prefix.size() && str.compare(0, prefix.size(), prefix) == 0) {
+        str.erase(0, prefix.size());
+    }
+}
+
 void remove_suffix(std::string& str, const std::string& suffix) {
     if (str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0) {
         str.erase(str.size() - suffix.size());

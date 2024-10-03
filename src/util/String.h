@@ -12,6 +12,8 @@ bool        to_char16(const std::string& str, char16_t* des, size_t len);
 // TODO: Replace with: std::expected
 std::optional<uint32_t> to_uint32(const std::string& str);
 
+void remove_prefix(std::string& str, const std::string& prefix);
+
 void remove_suffix(std::string& str, const std::string& suffix);
 
 
