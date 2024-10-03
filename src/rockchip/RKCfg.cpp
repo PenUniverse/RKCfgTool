@@ -64,8 +64,8 @@ RKCfgFile::fromParameter(const std::string& path, AutoScanArgument auto_scan_arg
     // "mtdparts=rk29xxnand:0x00002000@0x00004000(uboot),...,0x00400000@0x00E3a000(userdata),-@0x0123a000(userdisk:grow)"
     std::string mtdparts;
     while (std::getline(file, mtdparts)) {
-        if (mtdparts.starts_with("CMDLINE: "))
-            if (mtdparts.starts_with("mtdparts=")) break;
+        if (mtdparts.starts_with("CMDLINE: ")) util::string::remove_prefix(mtdparts, "CMDLINE: ");
+        if (mtdparts.starts_with("mtdparts=")) break;
     }
     spdlog::debug("mtdparts: {}", mtdparts);
     if (mtdparts.empty()) {

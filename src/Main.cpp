@@ -18,7 +18,7 @@ int main(int argc, char** argv) try {
 
     // clang-format off
 
-    argparse::ArgumentParser program("rkcfgtool", "0.1.0");
+    argparse::ArgumentParser program("rkcfgtool", "0.2.0");
 
     program.add_argument("-i", "--input")
         .help("Import a file.")
