@@ -37,10 +37,10 @@ jobs:
           xmake -v -y
       
       - run: |
-          Copy-Item "$env:USERPROFILE\AppData\Local\.xmake\packages\i\icu4c\*\*\bin\*.dll" -Destination build\windows\x64\ -Force
+          Copy-Item "$env:USERPROFILE\AppData\Local\.xmake\packages\i\icu4c\*\*\bin\*.dll" -Destination build\windows\x64\${{ matrix.mode }} -Force
 
       - uses: actions/upload-artifact@v4
         with:
           name: rkcfgtool-${{ matrix.mode }}-windows-x64-${{ github.sha }}
           path: |
-            build/windows/x64
+            build/windows/x64/${{ matrix.mode }}
